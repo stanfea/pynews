@@ -6,7 +6,7 @@ import openpyxl
 import os
 import sys
 from multiprocessing.pool import ThreadPool
-import queue
+import Queue
 from selenium.common.exceptions import NoSuchElementException
 
 
@@ -122,17 +122,20 @@ def main():
     if len(sys.argv) < 2:
         print_usage()
         sys.exit(0)
+
     terms = read_terms(os.path.abspath(sys.argv[1]))
-    output_queue = queue.Queue()
+    output_queue = Queue.Queue()
     output_file = 'output_%s.csv' % time.strftime("%m-%d-%Y-%H%M%S")
     output_file = open(output_file, 'wb')
-    output_writer = ThreadPool(1).apply_async(write_output, (output_queue, output_file))
-    yahoo_results = ThreadPool(1).apply_async(imap_queue, (yahoo, terms, output_queue))
-    bing_results = ThreadPool(1).apply_async(imap_queue, (bing, terms, output_queue))
-    yahoo_results.get()
-    bing_results.get()
-    output_queue.join()
-    output_file.close()
+    try:
+        output_writer = ThreadPool(1).apply_async(write_output, (output_queue, output_file))
+        yahoo_results = ThreadPool(1).apply_async(imap_queue, (yahoo, terms, output_queue))
+        bing_results = ThreadPool(1).apply_async(imap_queue, (bing, terms, output_queue))
+        yahoo_results.get()
+        bing_results.get()
+        output_queue.join()
+    finally:
+        output_file.close()
 
 if __name__ == '__main__':
     main()
